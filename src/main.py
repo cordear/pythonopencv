@@ -2,6 +2,17 @@ import cv2
 import sys
 import os
 import logging
+
+
+def skinDetect(frame):
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2YCrCb)
+    crFrame = cv2.split(frame)[1]
+    crFrame = cv2.GaussianBlur(crFrame, (5, 5), 0)
+    _, crFrame = cv2.threshold(
+        crFrame, 0, 255, cv2.THRESH_OTSU | cv2.THRESH_BINARY)
+    return crFrame
+
+
 if __name__ == "__main__":
     logFormat: str = "%(asctime)s - %(levelname)s: %(message)s"
     logpath: str = os.path.split(
@@ -10,6 +21,9 @@ if __name__ == "__main__":
                         level=logging.DEBUG, filename="{0}/log/log".format(logpath))
     print(cv2.__version__)
     # print(logpath)
+
+    element = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+
     video = cv2.VideoCapture(0)
     logging.info("Camera set for 0.")
     if(video.isOpened() != True):
@@ -19,7 +33,19 @@ if __name__ == "__main__":
     while(True):
         ret, frame = video.read()
         frame = cv2.flip(frame, 0)  # Flip the picture. Change if needed
-        cv2.imshow("camera", frame)
+        skinFrame = skinDetect(frame)
+        skinFrame = cv2.morphologyEx(
+            skinFrame, cv2.MORPH_OPEN, element, iterations=6)
+        skinFrame = cv2.morphologyEx(
+            skinFrame, cv2.MORPH_CLOSE, element, iterations=6)
+        skinFrame = cv2.morphologyEx(
+            skinFrame, cv2.MORPH_CLOSE, element, iterations=6)
+        skinFrame = cv2.morphologyEx(
+            skinFrame, cv2.MORPH_OPEN, element, iterations=6)
+        skinFrame = cv2.cvtColor(skinFrame, cv2.COLOR_GRAY2BGR)
+        skin = cv2.bitwise_and(frame, skinFrame)
+        cv2.imshow("Origin", frame)
+        cv2.imshow("Skin", skin)
         if cv2.waitKey(1) & 0xFF == ord("q"):
             logging.info("Quit")
             break

@@ -2,6 +2,7 @@ import cv2
 import sys
 import os
 import logging
+import numpy as np
 
 
 def skinDetect(frame):
@@ -26,6 +27,8 @@ if __name__ == "__main__":
     hull = []
     hullI = []
     video = cv2.VideoCapture(0)
+    acuteAngle = 0
+
     logging.info("Camera set for 0.")
     if(video.isOpened() != True):
         print("Camera open failed.")
@@ -72,6 +75,26 @@ if __name__ == "__main__":
                 cv2.circle(frame, end, 6, (0, 255, 0))
                 cv2.circle(frame, far, 6, (0, 0, 255))
 
+                vectorA = [far[0]-start[0], far[1]-start[1]]
+                vectorB = [far[0]-end[0], far[1]-end[1]]
+                vectorA = np.asarray(vectorA, dtype=np.double)
+                vectorB = np.asarray(vectorB, dtype=np.double)
+                ds = np.dot(vectorA, vectorB)
+                if(ds/(np.linalg.norm(vectorA)*np.linalg.norm(vectorB)) > 0):
+                    acuteAngle = acuteAngle+1
+            if(acuteAngle < 1 and cv2.arcLength(t, False) > 600):
+                cv2.putText(frame, "Rock",
+                            t[0][0], cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255))
+            elif(acuteAngle == 1):
+                cv2.putText(frame, "Scissors",
+                            t[0][0], cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255))
+            elif(acuteAngle >= 3):
+                cv2.putText(frame, "Paper",
+                            t[0][0], cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255))
+            elif(cv2.arcLength(t, False) > 1000):
+                cv2.putText(frame, "Unknow",
+                            t[0][0], cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255))
+            acuteAngle = 0
         frame = cv2.drawContours(frame, hull, -1, (255, 0, 0))
         cv2.imshow("Final", frame)
         hull.clear()

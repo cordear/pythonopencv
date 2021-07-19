@@ -23,6 +23,59 @@ def display(frame, t, text):
     return frame
 
 
+def displayResult(frame, contours, indexPair):
+    for pair in indexPair:
+        text = "Win"
+        color = (0, 255, 0)
+        if(pair[2] == 0):
+            text = "fail"
+            color = (0, 0, 255)
+        elif(pair[2] == 2):
+            text = "tie"
+            color = (255, 0, 0)
+        x, y, w, h = cv2.boundingRect(contours[pair[0]])
+        cv2.putText(frame, text, (x+int(w/2), int(y+h/2)+30),
+                    cv2.FONT_HERSHEY_PLAIN, 2, color)
+    return frame
+
+
+def judage(indexPair):
+    if(indexPair[0][1] == 0):
+        if(indexPair[1][1] == 1):
+            indexPair[0].append(1)
+            indexPair[1].append(0)
+        elif(indexPair[1][1] >= 3):
+            indexPair[0].append(0)
+            indexPair[1].append(1)
+        else:
+            indexPair[0].append(2)
+            indexPair[1].append(2)
+    elif(indexPair[0][1] == 1):
+        if(indexPair[1][1] == 0):
+            indexPair[0].append(0)
+            indexPair[1].append(1)
+        elif(indexPair[1][1] >= 3):
+            indexPair[0].append(1)
+            indexPair[1].append(0)
+        else:
+            indexPair[0].append(2)
+            indexPair[1].append(2)
+    elif(indexPair[0][1] >= 3):
+        if(indexPair[1][1] == 0):
+            indexPair[0].append(1)
+            indexPair[1].append(0)
+        elif(indexPair[1][1] == 1):
+            indexPair[0].append(0)
+            indexPair[1].append(1)
+        else:
+            indexPair[0].append(2)
+            indexPair[1].append(2)
+    else:
+        indexPair[0].append(2)
+        indexPair[1].append(2)
+    return indexPair
+
+
 if __name__ == "__main__":
     logFormat: str = "%(asctime)s - %(levelname)s: %(message)s"
     logpath: str = os.path.split(
@@ -33,8 +86,8 @@ if __name__ == "__main__":
     # print(logpath)
 
     element = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-    hull = []
-    hullI = []
+    hull = []  # Hull List
+    indexPair = []
     video = cv2.VideoCapture(0)
     video.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)
     acuteAngle = 0
@@ -63,7 +116,7 @@ if __name__ == "__main__":
         skin = cv2.bitwise_and(frame, skinFrame)
         cv2.imshow("Origin", frame)
         cv2.imshow("Skin", skin)
-        for t in contours:
+        for p, t in enumerate(contours):
             if cv2.contourArea(t) < 200:
                 continue
             hull.append(cv2.convexHull(t))
@@ -92,6 +145,7 @@ if __name__ == "__main__":
                 ds = np.dot(vectorA, vectorB)
                 if(ds/(np.linalg.norm(vectorA)*np.linalg.norm(vectorB)) > 0):
                     acuteAngle = acuteAngle+1
+            indexPair.append([p, acuteAngle])
             if(acuteAngle < 1 and cv2.arcLength(t, False) > 600):
                 frame = display(frame, t, "Rock")
             elif(acuteAngle == 1):
@@ -101,10 +155,13 @@ if __name__ == "__main__":
             elif(cv2.arcLength(t, False) > 1000):
                 frame = display(frame, t, "Unknow")
             acuteAngle = 0
-        frame = cv2.drawContours(frame, hull, -1, (255, 0, 0))
-
+        #frame = cv2.drawContours(frame, hull, -1, (255, 0, 0))
+        if(len(indexPair) == 2):
+            indexPair = judage(indexPair)
+            frame = displayResult(frame, contours, indexPair)
         cv2.imshow("Final", frame)
         hull.clear()
+        indexPair.clear()
         if cv2.waitKey(1) & 0xFF == ord("q"):
             logging.info("Quit")
             break
